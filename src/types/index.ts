@@ -1,4 +1,5 @@
 export interface IUser {
+    id?: string;
     name: string;
     email: string;
     password: string;
@@ -8,6 +9,7 @@ export interface IUser {
 }
 
 export interface IProblem {
+    id?: string;
     title: string;
     difficulty: 'Easy' | 'Medium' | 'Hard';
     description: string;
@@ -23,6 +25,7 @@ export interface IProblem {
 }
 
 export interface IDesign {
+    id?: string;
     userId: string;
     problemId: string;
     nodes: any[];

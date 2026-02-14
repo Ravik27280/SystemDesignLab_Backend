@@ -88,7 +88,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       429:
- *         description: Too many requests (Rate limit: 10 per hour)
+ *         description: "Too many requests (Rate limit: 10 per hour)"
  *         content:
  *           application/json:
  *             schema:
