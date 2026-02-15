@@ -46,6 +46,27 @@ export class DesignController {
             sendError(res, error.message, statusCode);
         }
     }
+
+    async getDesignByProblemId(req: Request, res: Response): Promise<void> {
+        try {
+            if (!req.user) {
+                sendError(res, 'Authentication required', 401);
+                return;
+            }
+
+            const problemId = req.params.problemId as string;
+            const design = await designService.getDesignByProblemId(problemId, req.user.userId);
+
+            if (!design) {
+                sendError(res, 'No design found for this problem', 404);
+                return;
+            }
+
+            sendSuccess(res, design);
+        } catch (error: any) {
+            sendError(res, error.message, 500);
+        }
+    }
 }
 
 export default new DesignController();

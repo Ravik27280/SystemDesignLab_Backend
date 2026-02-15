@@ -33,6 +33,15 @@ export class DesignService {
 
         return design;
     }
+
+    async getDesignByProblemId(problemId: string, userId: string) {
+        const design = await Design.findOne({ problemId, userId })
+            .populate('problemId', 'title difficulty description')
+            .select('-__v')
+            .sort({ createdAt: -1 }); // Get the latest design if multiple exist
+
+        return design; // Returns null if not found
+    }
 }
 
 export default new DesignService();

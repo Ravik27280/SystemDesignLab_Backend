@@ -31,8 +31,8 @@ export interface IDesign {
     nodes: any[];
     edges: any[];
     evaluationResult?: IEvaluationResult;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface IEvaluationResult {

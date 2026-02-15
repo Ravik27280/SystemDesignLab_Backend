@@ -156,4 +156,52 @@ router.get(
     designController.getDesignById.bind(designController)
 );
 
+/**
+ * @swagger
+ * /api/designs/problem/{problemId}:
+ *   get:
+ *     summary: Get design by problem ID for current user
+ *     tags: [Designs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: problemId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Problem ID
+ *         example: 507f1f77bcf86cd799439011
+ *     responses:
+ *       200:
+ *         description: Design details for the problem
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Design'
+ *       404:
+ *         description: No design found for this problem
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get(
+    '/problem/:problemId',
+    authenticate,
+    designController.getDesignByProblemId.bind(designController)
+);
+
 export default router;
