@@ -55,8 +55,12 @@ export class EvaluationService {
     /**
      * Evaluate design using Gemini AI
      */
+    /**
+     * Evaluate design using Gemini AI
+     */
     private async evaluateWithGemini(design: any, problem: any): Promise<IEvaluationResult> {
-        const model = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Use 'gemini-flash-latest' for potentially better availability
+        const model = this.genAI!.getGenerativeModel({ model: 'gemini-flash-latest' });
 
         // Prepare design context
         const componentsSummary = design.nodes.map((node: any) => ({
@@ -95,10 +99,11 @@ Connections: ${JSON.stringify(connectionsSummary, null, 2)}
 
 Analyze this architecture and provide feedback in STRICT JSON format with these exact keys:
 {
+  "score": 0-100 (integer, based on how well requirements are met),
   "strengths": ["list of 3-5 specific positive aspects based on actual components used"],
-  "risks": ["list of 3-5 potential issues or concerns"],
-  "criticalIssues": ["list of 2-4 must-fix problems or missing components"],
-  "optimizations": ["list of 4-6 concrete improvement suggestions"]
+  "warnings": ["list of 3-5 potential issues or minor concerns"],
+  "errors": ["list of 2-4 critical flaws, missing requirements, or single points of failure"],
+  "suggestions": ["list of 4-6 concrete improvement suggestions"]
 }
 
 IMPORTANT: 
@@ -118,7 +123,7 @@ IMPORTANT:
             const evaluation = JSON.parse(jsonText);
 
             // Validate structure
-            if (!evaluation.strengths || !evaluation.risks || !evaluation.criticalIssues || !evaluation.optimizations) {
+            if (typeof evaluation.score !== 'number' || !evaluation.strengths || !evaluation.warnings || !evaluation.errors || !evaluation.suggestions) {
                 throw new Error('Invalid evaluation structure');
             }
 
@@ -134,24 +139,25 @@ IMPORTANT:
      */
     private getMockEvaluation(): IEvaluationResult {
         return {
+            score: 75,
             strengths: [
                 'Good use of load balancer for distributing traffic',
                 'Implemented caching layer to reduce database load',
                 'Proper separation between frontend and backend services',
                 'Use of message queue for asynchronous processing',
             ],
-            risks: [
+            warnings: [
                 'Single point of failure in the database layer',
                 'No data replication strategy mentioned',
                 'Cache invalidation strategy not clearly defined',
                 'Limited monitoring and alerting setup',
             ],
-            criticalIssues: [
+            errors: [
                 'Missing database sharding for horizontal scalability',
                 'No backup and disaster recovery plan',
                 'Authentication service is not horizontally scaled',
             ],
-            optimizations: [
+            suggestions: [
                 'Consider using CDN for static assets to reduce latency',
                 'Add read replicas for the database to handle read-heavy workloads',
                 'Implement circuit breaker pattern for external service calls',

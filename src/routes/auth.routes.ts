@@ -131,4 +131,32 @@ router.post(
     authController.login.bind(authController)
 );
 
+/**
+ * @swagger
+ * /api/auth/google:
+ *   post:
+ *     summary: Login with Google
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - credential
+ *             properties:
+ *               credential:
+ *                 type: string
+ *                 description: Google ID Token
+ *     responses:
+ *       200:
+ *         description: Login successful
+ */
+router.post(
+    '/google',
+    authLimiter,
+    authController.googleLogin.bind(authController)
+);
+
 export default router;

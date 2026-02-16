@@ -57,6 +57,66 @@ export class AuthService {
             token,
         };
     }
+
+    async googleLogin(credential: string) {
+        // Use the access token to get user info directly
+        try {
+            const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${credential}` },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to verify Google token');
+            }
+
+            interface GoogleTokenPayload {
+                email: string;
+                name: string;
+                picture: string;
+                given_name: string;
+                sub: string;
+            }
+
+            const payload = await response.json() as GoogleTokenPayload;
+
+            if (!payload.email) {
+                throw new Error('Invalid Google token payload');
+            }
+
+            const { email, name, picture } = payload;
+
+            // Check if user exists
+            let user = await User.findOne({ email });
+
+            if (!user) {
+                // Create new user
+                const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+
+                user = await User.create({
+                    name: name || payload.given_name || 'User',
+                    email,
+                    password: randomPassword,
+                    role: 'free' // Default role
+                });
+            }
+
+            // Generate JWT token
+            const token = generateToken(user._id.toString());
+
+            return {
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                },
+                token,
+            };
+        } catch (error) {
+            console.error('Google Auth Error:', error);
+            throw new Error('Invalid Google token');
+        }
+    }
 }
 
 export default new AuthService();

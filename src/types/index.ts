@@ -36,8 +36,9 @@ export interface IDesign {
 }
 
 export interface IEvaluationResult {
+    score: number;
     strengths: string[];
-    risks: string[];
-    criticalIssues: string[];
-    optimizations: string[];
+    warnings: string[];
+    errors: string[];
+    suggestions: string[];
 }

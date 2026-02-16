@@ -20,6 +20,20 @@ export class AuthController {
             sendError(res, error.message, 401);
         }
     }
+
+    async googleLogin(req: Request, res: Response): Promise<void> {
+        try {
+            const { credential } = req.body;
+            if (!credential) {
+                sendError(res, 'Credential is required', 400);
+                return;
+            }
+            const result = await authService.googleLogin(credential);
+            sendSuccess(res, result, 'Google login successful');
+        } catch (error: any) {
+            sendError(res, error.message, 401);
+        }
+    }
 }
 
 export default new AuthController();
