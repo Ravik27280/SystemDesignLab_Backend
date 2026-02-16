@@ -1,18 +1,27 @@
 import Design from '../models/Design.model';
 import Problem from '../models/Problem.model';
 import { IEvaluationResult } from '../types';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { logger } from '../utils/logger.util';
 
 export class EvaluationService {
+    private genAI: GoogleGenerativeAI | null = null;
+
+    constructor() {
+        // Initialize Gemini AI if API key is available
+        if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+            this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            logger.info('✅ Gemini AI initialized successfully');
+        } else {
+            logger.warn('⚠️  Gemini API key not found - using mock evaluations');
+        }
+    }
+
     /**
-     * TODO: In the future, integrate OpenAI API for real AI-powered evaluation
-     * This would involve:
-     * 1. Sending the design (nodes & edges) and problem requirements to OpenAI
-     * 2. Using GPT-4 to analyze system architecture
-     * 3. Getting detailed feedback on scalability, bottlenecks, best practices
-     * 4. Storing evaluation results in the Design model
+     * Evaluate a system design using Gemini AI
      */
     async evaluateDesign(designId: string, problemId: string): Promise<IEvaluationResult> {
-        // Fetch design and problem for context (even though mock doesn't use them yet)
+        // Fetch design and problem for context
         const design = await Design.findById(designId);
         const problem = await Problem.findById(problemId);
 
@@ -20,9 +29,111 @@ export class EvaluationService {
             throw new Error('Design or problem not found');
         }
 
-        // Mock AI evaluation response
-        // In production, this would be replaced with actual OpenAI API call
-        const mockEvaluation: IEvaluationResult = {
+        // Use AI evaluation if available, otherwise fall back to mock
+        let evaluation: IEvaluationResult;
+
+        if (this.genAI) {
+            try {
+                evaluation = await this.evaluateWithGemini(design, problem);
+                logger.info(`✅ AI evaluation completed for design ${designId}`);
+            } catch (error: any) {
+                logger.error('❌ Gemini AI evaluation failed:', error.message);
+                logger.warn('⚠️  Falling back to mock evaluation');
+                evaluation = this.getMockEvaluation();
+            }
+        } else {
+            evaluation = this.getMockEvaluation();
+        }
+
+        // Store evaluation result in design
+        design.evaluationResult = evaluation;
+        await design.save();
+
+        return evaluation;
+    }
+
+    /**
+     * Evaluate design using Gemini AI
+     */
+    private async evaluateWithGemini(design: any, problem: any): Promise<IEvaluationResult> {
+        const model = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        // Prepare design context
+        const componentsSummary = design.nodes.map((node: any) => ({
+            type: node.data.nodeType,
+            label: node.data.label,
+        }));
+
+        const connectionsSummary = design.edges.map((edge: any) => {
+            const sourceNode = design.nodes.find((n: any) => n.id === edge.source);
+            const targetNode = design.nodes.find((n: any) => n.id === edge.target);
+            return {
+                from: sourceNode?.data.label || edge.source,
+                to: targetNode?.data.label || edge.target,
+            };
+        });
+
+        const prompt = `You are a senior system design architect. Analyze the following system design and provide detailed, specific feedback.
+
+PROBLEM: ${problem.title}
+DESCRIPTION: ${problem.description}
+
+FUNCTIONAL REQUIREMENTS:
+${problem.functionalRequirements.map((req: string, i: number) => `${i + 1}. ${req}`).join('\n')}
+
+NON-FUNCTIONAL REQUIREMENTS:
+${problem.nonFunctionalRequirements.map((req: string, i: number) => `${i + 1}. ${req}`).join('\n')}
+
+SCALE:
+- Users: ${problem.scale.users || 'Not specified'}
+- Requests: ${problem.scale.requests || 'Not specified'}
+- Data: ${problem.scale.data || 'Not specified'}
+
+DESIGNED ARCHITECTURE:
+Components: ${JSON.stringify(componentsSummary, null, 2)}
+Connections: ${JSON.stringify(connectionsSummary, null, 2)}
+
+Analyze this architecture and provide feedback in STRICT JSON format with these exact keys:
+{
+  "strengths": ["list of 3-5 specific positive aspects based on actual components used"],
+  "risks": ["list of 3-5 potential issues or concerns"],
+  "criticalIssues": ["list of 2-4 must-fix problems or missing components"],
+  "optimizations": ["list of 4-6 concrete improvement suggestions"]
+}
+
+IMPORTANT: 
+- Be specific and reference actual components in the design (e.g., "Your Redis cache reduces database load")
+- Consider the scale requirements when evaluating
+- Mention missing critical components for this problem
+- Return ONLY valid JSON, no markdown formatting`;
+
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        const text = response.text();
+
+        // Parse JSON response
+        try {
+            // Remove markdown code blocks if present
+            const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const evaluation = JSON.parse(jsonText);
+
+            // Validate structure
+            if (!evaluation.strengths || !evaluation.risks || !evaluation.criticalIssues || !evaluation.optimizations) {
+                throw new Error('Invalid evaluation structure');
+            }
+
+            return evaluation as IEvaluationResult;
+        } catch (parseError) {
+            logger.error('Failed to parse Gemini response:', text);
+            throw new Error('Invalid AI response format');
+        }
+    }
+
+    /**
+     * Fallback mock evaluation
+     */
+    private getMockEvaluation(): IEvaluationResult {
+        return {
             strengths: [
                 'Good use of load balancer for distributing traffic',
                 'Implemented caching layer to reduce database load',
@@ -48,12 +159,6 @@ export class EvaluationService {
                 'Add API gateway for rate limiting and request routing',
             ],
         };
-
-        // Store evaluation result in design
-        design.evaluationResult = mockEvaluation;
-        await design.save();
-
-        return mockEvaluation;
     }
 }
 
