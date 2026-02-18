@@ -22,11 +22,9 @@ const designSchema = new Schema({
         type: [Schema.Types.Mixed],
         default: [],
     },
-    evaluationResult: {
-        strengths: [String],
-        risks: [String],
-        criticalIssues: [String],
-        optimizations: [String],
+    feedback: {
+        type: Schema.Types.Mixed,
+        default: null,
     },
 }, {
     timestamps: true,

@@ -34,6 +34,36 @@ export class AuthController {
             sendError(res, error.message, 401);
         }
     }
+    async updateProfile(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = req.user.userId;
+            const { name } = req.body;
+            const result = await authService.updateProfile(userId, { name });
+            sendSuccess(res, result, 'Profile updated successfully');
+        } catch (error: any) {
+            sendError(res, error.message, 400);
+        }
+    }
+
+    async upgradeToPro(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = req.user.userId;
+            const result = await authService.upgradeToPro(userId);
+            sendSuccess(res, result, 'Upgraded to Pro successfully');
+        } catch (error: any) {
+            sendError(res, error.message, 400);
+        }
+    }
+
+    async getUserStats(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = req.user.userId;
+            const result = await authService.getUserStats(userId);
+            sendSuccess(res, result, 'User stats retrieved successfully');
+        } catch (error: any) {
+            sendError(res, error.message, 400);
+        }
+    }
 }
 
 export default new AuthController();

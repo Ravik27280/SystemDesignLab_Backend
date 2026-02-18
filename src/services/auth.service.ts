@@ -1,6 +1,7 @@
 import User from '../models/User.model';
 import { generateToken } from '../utils/jwt.util';
 import { RegisterInput, LoginInput } from '../validators/auth.validator';
+import { IUser } from '../types';
 
 export class AuthService {
     async register(data: RegisterInput) {
@@ -116,6 +117,45 @@ export class AuthService {
             console.error('Google Auth Error:', error);
             throw new Error('Invalid Google token');
         }
+    }
+    async updateProfile(userId: string, data: { name?: string }): Promise<IUser> {
+        const user = await User.findByIdAndUpdate(userId, data, { new: true });
+        if (!user) {
+            throw new Error('User not found');
+        }
+        return user;
+    }
+
+    async upgradeToPro(userId: string): Promise<IUser> {
+        const user = await User.findById(userId);
+        if (!user) throw new Error('User not found');
+
+        user.role = 'pro';
+        user.subscriptionStatus = 'active';
+        await user.save();
+
+        return user;
+    }
+
+    async getUserStats(userId: string): Promise<any> {
+        // Import models inline to avoid circular dependencies if any, or just standard import at top
+        const Design = require('../models/Design.model').default;
+        const Problem = require('../models/Problem.model').default;
+
+        const designsCount = await Design.countDocuments({ userId });
+
+        // Find designs with feedback
+        const designs = await Design.find({ userId, 'evaluationResult.score': { $exists: true } });
+
+        const solvedCount = designs.length;
+        const totalScore = designs.reduce((acc: number, curr: any) => acc + (curr.evaluationResult?.score || 0), 0);
+        const averageScore = solvedCount > 0 ? Math.round(totalScore / solvedCount) : 0;
+
+        return {
+            designsCount,
+            problemsSolved: solvedCount,
+            averageScore
+        };
     }
 }
 

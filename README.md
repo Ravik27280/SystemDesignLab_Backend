@@ -71,6 +71,8 @@ GOOGLE_CLIENT_ID=your_google_client_id
 - Get `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/).
 - Get `GOOGLE_CLIENT_ID` from [Google Cloud Console](https://console.cloud.google.com/).
 
+> **Need Cloud Database?** Check out our [MongoDB Atlas Setup Guide](./MONGODB_SETUP.md) for production deployment.
+
 ### 4. Seed Database (Optional)
 
 To populate the database with sample system design problems:

@@ -3,6 +3,7 @@ import authController from '../controllers/auth.controller';
 import { validate } from '../middlewares/validate.middleware';
 import { registerSchema, loginSchema } from '../validators/auth.validator';
 import { authLimiter } from '../middlewares/rateLimiter.middleware';
+import { authenticate as protect } from '../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -157,6 +158,24 @@ router.post(
     '/google',
     authLimiter,
     authController.googleLogin.bind(authController)
+);
+
+router.put(
+    '/profile',
+    protect,
+    authController.updateProfile.bind(authController)
+);
+
+router.post(
+    '/upgrade',
+    protect,
+    authController.upgradeToPro.bind(authController)
+);
+
+router.get(
+    '/stats',
+    protect,
+    authController.getUserStats.bind(authController)
 );
 
 export default router;

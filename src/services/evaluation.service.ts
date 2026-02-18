@@ -55,17 +55,18 @@ export class EvaluationService {
     /**
      * Evaluate design using Gemini AI
      */
-    /**
-     * Evaluate design using Gemini AI
-     */
     private async evaluateWithGemini(design: any, problem: any): Promise<IEvaluationResult> {
-        // Use 'gemini-flash-latest' for potentially better availability
-        const model = this.genAI!.getGenerativeModel({ model: 'gemini-flash-latest' });
+        // Use 'gemini-1.5-flash' for better performance/cost ratio if available, else standard
+        const model = this.genAI!.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            generationConfig: { responseMimeType: "application/json" }
+        });
 
         // Prepare design context
         const componentsSummary = design.nodes.map((node: any) => ({
-            type: node.data.nodeType,
-            label: node.data.label,
+            type: node.data.nodeType || 'generic',
+            label: node.data.label || 'Unnamed Component',
+            config: node.data.config || {}
         }));
 
         const connectionsSummary = design.edges.map((edge: any) => {
@@ -74,63 +75,82 @@ export class EvaluationService {
             return {
                 from: sourceNode?.data.label || edge.source,
                 to: targetNode?.data.label || edge.target,
+                relation: edge.label || 'connects to'
             };
         });
 
-        const prompt = `You are a senior system design architect. Analyze the following system design and provide detailed, specific feedback.
+        const prompt = `You are a Senior System Design Architect acting as an interviewer and evaluator. 
+Your goal is to evaluate a candidate's system design solution against a specific problem statement.
 
-PROBLEM: ${problem.title}
+CONTEXT:
+PROBLEM TITLE: ${problem.title}
 DESCRIPTION: ${problem.description}
 
-FUNCTIONAL REQUIREMENTS:
+FUNCTIONAL REQUIREMENTS (Must be met):
 ${problem.functionalRequirements.map((req: string, i: number) => `${i + 1}. ${req}`).join('\n')}
 
-NON-FUNCTIONAL REQUIREMENTS:
+NON-FUNCTIONAL REQUIREMENTS (Should be considered):
 ${problem.nonFunctionalRequirements.map((req: string, i: number) => `${i + 1}. ${req}`).join('\n')}
 
-SCALE:
-- Users: ${problem.scale.users || 'Not specified'}
-- Requests: ${problem.scale.requests || 'Not specified'}
-- Data: ${problem.scale.data || 'Not specified'}
+SCALE CONSIDERATIONS:
+- Users: ${problem.scale.users || 'N/A'}
+- Requests: ${problem.scale.requests || 'N/A'}
+- Data: ${problem.scale.data || 'N/A'}
 
-DESIGNED ARCHITECTURE:
+CANDIDATE'S DESIGN:
 Components: ${JSON.stringify(componentsSummary, null, 2)}
 Connections: ${JSON.stringify(connectionsSummary, null, 2)}
 
-Analyze this architecture and provide feedback in STRICT JSON format with these exact keys:
+INSTRUCTIONS:
+1. Analyze if the design meets the Functional Requirements. Mark each as met/not met.
+2. Analyze if the design addresses Non-Functional Requirements (Scalability, Availability, Latency).
+3. Identify critical missing components (e.g., missing Load Balancer for high traffic, missing Cache for latency).
+4. Assign a score (0-100) based on:
+    - Functionality (40%)
+    - Scalability & Reliability (30%)
+    - Component Choice (20%)
+    - Completeness (10%)
+
+OUTPUT FORMAT (Strict JSON):
 {
-  "score": 0-100 (integer, based on how well requirements are met),
-  "strengths": ["list of 3-5 specific positive aspects based on actual components used"],
-  "warnings": ["list of 3-5 potential issues or minor concerns"],
-  "errors": ["list of 2-4 critical flaws, missing requirements, or single points of failure"],
-  "suggestions": ["list of 4-6 concrete improvement suggestions"]
-}
+  "score": <number 0-100>,
+  "summary": "<1-2 sentence high-level summary>",
+  "requirementAnalysis": [
+    { "requirement": "<Requirement Text>", "met": <boolean>, "comment": "<Brief explanation>" }
+  ],
+  "strengths": ["<Strength 1>", "<Strength 2>", ...],
+  "warnings": ["<Warning 1>", "<Warning 2>", ...],
+  "errors": ["<Critical Error 1>", "<Critical Error 2>", ...],
+  "suggestions": ["<Suggestion 1>", "<Suggestion 2>", ...],
+  "securityAnalysis": "<Specific feedback on security risks/best practices>",
+  "scalabilityAnalysis": "<Specific feedback on handling the defined scale>"
+}`;
 
-IMPORTANT: 
-- Be specific and reference actual components in the design (e.g., "Your Redis cache reduces database load")
-- Consider the scale requirements when evaluating
-- Mention missing critical components for this problem
-- Return ONLY valid JSON, no markdown formatting`;
-
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const text = response.text();
-
-        // Parse JSON response
         try {
-            // Remove markdown code blocks if present
+            const result = await model.generateContent(prompt);
+            const response = result.response;
+            const text = response.text();
+
+            // Parse JSON response (Gemini might wrap in markdown blocks)
             const jsonText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
             const evaluation = JSON.parse(jsonText);
 
-            // Validate structure
-            if (typeof evaluation.score !== 'number' || !evaluation.strengths || !evaluation.warnings || !evaluation.errors || !evaluation.suggestions) {
-                throw new Error('Invalid evaluation structure');
-            }
+            // Ensure all fields exist
+            return {
+                score: evaluation.score || 0,
+                summary: evaluation.summary || "Evaluation completed.",
+                requirementAnalysis: evaluation.requirementAnalysis || [],
+                strengths: evaluation.strengths || [],
+                warnings: evaluation.warnings || [],
+                errors: evaluation.errors || [],
+                suggestions: evaluation.suggestions || [],
+                securityAnalysis: evaluation.securityAnalysis || "No specific security issues found.",
+                scalabilityAnalysis: evaluation.scalabilityAnalysis || "Scalability looks acceptable."
+            };
 
-            return evaluation as IEvaluationResult;
-        } catch (parseError) {
-            logger.error('Failed to parse Gemini response:', text);
-            throw new Error('Invalid AI response format');
+        } catch (error: any) {
+            logger.error('Failed to generate or parse Gemini response:', error);
+            throw new Error('AI Evaluation failed to produce valid JSON');
         }
     }
 
@@ -140,30 +160,28 @@ IMPORTANT:
     private getMockEvaluation(): IEvaluationResult {
         return {
             score: 75,
+            summary: "A solid baseline design that covers most core requirements but lacks advanced scalability features.",
+            requirementAnalysis: [
+                { requirement: "Handle URL redirection", met: true, comment: "API service handles this." },
+                { requirement: "High Availability", met: false, comment: "Single database instance is a SPOF." }
+            ],
             strengths: [
-                'Good use of load balancer for distributing traffic',
-                'Implemented caching layer to reduce database load',
-                'Proper separation between frontend and backend services',
-                'Use of message queue for asynchronous processing',
+                'Good use of load balancer',
+                'Separation of concerns is clear',
             ],
             warnings: [
-                'Single point of failure in the database layer',
-                'No data replication strategy mentioned',
-                'Cache invalidation strategy not clearly defined',
-                'Limited monitoring and alerting setup',
+                'Database might become a bottleneck',
+                'No caching layer visible'
             ],
             errors: [
-                'Missing database sharding for horizontal scalability',
-                'No backup and disaster recovery plan',
-                'Authentication service is not horizontally scaled',
+                'No database replication defined',
             ],
             suggestions: [
-                'Consider using CDN for static assets to reduce latency',
-                'Add read replicas for the database to handle read-heavy workloads',
-                'Implement circuit breaker pattern for external service calls',
-                'Use Redis cluster instead of single Redis instance',
-                'Add API gateway for rate limiting and request routing',
+                'Add Redis for caching',
+                'Implement database sharding',
             ],
+            securityAnalysis: "Basic architecture lacks detailed security components like WAF or private subnets.",
+            scalabilityAnalysis: "Horizontal scaling is possible for APIs, but database needs read replicas."
         };
     }
 }

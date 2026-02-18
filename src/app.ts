@@ -12,8 +12,13 @@ import authRoutes from './routes/auth.routes';
 import problemRoutes from './routes/problem.routes';
 import designRoutes from './routes/design.routes';
 import evaluationRoutes from './routes/evaluation.routes';
+import paymentRoutes from './routes/payment.routes';
+import helmet from 'helmet';
 
 const app: Application = express();
+
+// Security Middleware
+app.use(helmet());
 
 // Middleware
 app.use(cors({
@@ -54,6 +59,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/designs', designRoutes);
 app.use('/api/evaluate', evaluationRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // 404 handler - catches all unmatched routes
 app.use((req, res) => {

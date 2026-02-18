@@ -37,8 +37,16 @@ export interface IDesign {
 
 export interface IEvaluationResult {
     score: number;
+    summary: string;
+    requirementAnalysis: {
+        requirement: string;
+        met: boolean;
+        comment: string;
+    }[];
     strengths: string[];
     warnings: string[];
     errors: string[];
     suggestions: string[];
+    securityAnalysis?: string;
+    scalabilityAnalysis?: string;
 }
