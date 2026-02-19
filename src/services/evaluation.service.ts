@@ -56,9 +56,9 @@ export class EvaluationService {
      * Evaluate design using Gemini AI
      */
     private async evaluateWithGemini(design: any, problem: any): Promise<IEvaluationResult> {
-        // Use 'gemini-1.5-flash' for better performance/cost ratio if available, else standard
+        // Use 'gemini-2.5-flash' as it was verified to be working and within quota
         const model = this.genAI!.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             generationConfig: { responseMimeType: "application/json" }
         });
 

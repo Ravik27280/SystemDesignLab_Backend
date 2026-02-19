@@ -13,6 +13,7 @@ import problemRoutes from './routes/problem.routes';
 import designRoutes from './routes/design.routes';
 import evaluationRoutes from './routes/evaluation.routes';
 import paymentRoutes from './routes/payment.routes';
+import leaderboardRoutes from './routes/leaderboard.routes';
 import helmet from 'helmet';
 
 const app: Application = express();
@@ -60,6 +61,7 @@ app.use('/api/problems', problemRoutes);
 app.use('/api/designs', designRoutes);
 app.use('/api/evaluate', evaluationRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // 404 handler - catches all unmatched routes
 app.use((req, res) => {

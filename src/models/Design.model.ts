@@ -22,6 +22,23 @@ const designSchema = new Schema({
         type: [Schema.Types.Mixed],
         default: [],
     },
+    evaluationResult: {
+        score: { type: Number, default: 0 },
+        summary: String,
+        requirementAnalysis: [
+            {
+                requirement: String,
+                met: Boolean,
+                comment: String
+            }
+        ],
+        strengths: [String],
+        warnings: [String],
+        errors: [String],
+        suggestions: [String],
+        securityAnalysis: String,
+        scalabilityAnalysis: String
+    },
     feedback: {
         type: Schema.Types.Mixed,
         default: null,
